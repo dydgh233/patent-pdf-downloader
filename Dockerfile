@@ -1,15 +1,23 @@
-FROM python:3.12-slim
+FROM python:3.12-bullseye
 
-# apt 캐시 정리 및 wkhtmltopdf 설치 (재시도 로직 포함)
-RUN rm -rf /var/lib/apt/lists/* && \
-    apt-get clean && \
-    apt-get update --fix-missing && \
+# 필수 패키지 및 wkhtmltopdf 설치
+RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-    wkhtmltopdf \
-    fonts-nanum \
-    fonts-nanum-coding \
-    && rm -rf /var/lib/apt/lists/* \
-    && apt-get clean
+    wget \
+    xfonts-75dpi \
+    xfonts-base \
+    fontconfig \
+    libjpeg62-turbo \
+    libxrender1 \
+    libxext6 \
+    libssl1.1 || true && \
+    wget https://github.com/wkhtmltopdf/packaging/releases/download/0.12.6.1-2/wkhtmltox_0.12.6.1-2.bullseye_amd64.deb && \
+    apt-get install -y ./wkhtmltox_0.12.6.1-2.bullseye_amd64.deb || true && \
+    rm -f wkhtmltox_0.12.6.1-2.bullseye_amd64.deb && \
+    apt-get install -y fonts-nanum fonts-nanum-coding || true && \
+    fc-cache -fv && \
+    rm -rf /var/lib/apt/lists/* && \
+    apt-get clean
 
 # 작업 디렉토리 설정
 WORKDIR /app

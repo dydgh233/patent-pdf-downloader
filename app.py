@@ -13,11 +13,34 @@ from flask import Flask, render_template, request, jsonify, send_file, Response
 
 # wkhtmltopdf 경로 설정 (OS에 따라 자동 감지)
 import platform
-if platform.system() == 'Windows':
-    WKHTMLTOPDF_PATH = r'C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe'
-else:
-    WKHTMLTOPDF_PATH = '/usr/bin/wkhtmltopdf'  # Linux (Render/Docker)
+import shutil
 
+def find_wkhtmltopdf():
+    """wkhtmltopdf 실행 파일 경로 찾기"""
+    if platform.system() == 'Windows':
+        return r'C:\Program Files\wkhtmltopdf\bin\wkhtmltopdf.exe'
+    
+    # Linux: 여러 가능한 경로 시도
+    possible_paths = [
+        '/usr/local/bin/wkhtmltopdf',
+        '/usr/bin/wkhtmltopdf',
+        '/bin/wkhtmltopdf',
+    ]
+    
+    # shutil.which로 PATH에서 찾기
+    which_path = shutil.which('wkhtmltopdf')
+    if which_path:
+        return which_path
+    
+    # 가능한 경로에서 찾기
+    for path in possible_paths:
+        if os.path.exists(path):
+            return path
+    
+    # 기본값 반환
+    return '/usr/local/bin/wkhtmltopdf'
+
+WKHTMLTOPDF_PATH = find_wkhtmltopdf()
 pdfkit_config = pdfkit.configuration(wkhtmltopdf=WKHTMLTOPDF_PATH)
 from patent_pdf_downloader import (
     normalize_rgst_no,

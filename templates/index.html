@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>특허 연차등록안내서 다운로더</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0a0e17;
+            --bg-secondary: #111827;
+            --bg-card: #1a2332;
+            --bg-input: #0d1117;
+            --accent-blue: #3b82f6;
+            --accent-cyan: #06b6d4;
+            --accent-emerald: #10b981;
+            --accent-amber: #f59e0b;
+            --accent-red: #ef4444;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --border-color: #1e293b;
+            --gradient-1: linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%);
+            --gradient-2: linear-gradient(135deg, #10b981 0%, #3b82f6 100%);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+
+        /* Background Effects */
+        .bg-grid {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: 
+                linear-gradient(rgba(59, 130, 246, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(59, 130, 246, 0.03) 1px, transparent 1px);
+            background-size: 50px 50px;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .bg-glow {
+            position: fixed;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle at 30% 20%, rgba(59, 130, 246, 0.08) 0%, transparent 50%),
+                        radial-gradient(circle at 70% 80%, rgba(6, 182, 212, 0.05) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* Container */
+        .container {
+            position: relative;
+            z-index: 1;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 40px 24px;
+        }
+
+        /* Header */
+        .header {
+            text-align: center;
+            margin-bottom: 48px;
+        }
+
+        .logo {
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .logo-icon {
+            width: 48px;
+            height: 48px;
+            background: var(--gradient-1);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+
+        .header h1 {
+            font-size: 32px;
+            font-weight: 700;
+            background: var(--gradient-1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header p {
+            color: var(--text-secondary);
+            font-size: 16px;
+            margin-top: 8px;
+        }
+
+        /* Card */
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 32px;
+            margin-bottom: 24px;
+            backdrop-filter: blur(10px);
+        }
+
+        .card-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .card-title .icon {
+            width: 32px;
+            height: 32px;
+            background: rgba(59, 130, 246, 0.15);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+        }
+
+        /* Textarea */
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        .input-label {
+            display: block;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 180px;
+            background: var(--bg-input);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 16px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 14px;
+            color: var(--text-primary);
+            resize: vertical;
+            transition: all 0.2s ease;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+        }
+
+        textarea::placeholder {
+            color: var(--text-muted);
+        }
+
+        /* Buttons */
+        .btn-group {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 12px 24px;
+            font-size: 15px;
+            font-weight: 500;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: inherit;
+        }
+
+        .btn-primary {
+            background: var(--gradient-1);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(59, 130, 246, 0.3);
+        }
+
+        .btn-secondary {
+            background: var(--bg-input);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-secondary:hover {
+            background: var(--bg-secondary);
+            border-color: var(--accent-blue);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        /* Results Table */
+        .results-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 16px;
+        }
+
+        .results-table th,
+        .results-table td {
+            padding: 12px 16px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .results-table th {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .results-table td {
+            font-size: 14px;
+        }
+
+        .results-table tr:hover td {
+            background: rgba(59, 130, 246, 0.05);
+        }
+
+        .results-table .mono {
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--accent-cyan);
+        }
+
+        /* Status Badge */
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .badge-pending {
+            background: rgba(245, 158, 11, 0.15);
+            color: var(--accent-amber);
+        }
+
+        .badge-success {
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--accent-emerald);
+        }
+
+        .badge-error {
+            background: rgba(239, 68, 68, 0.15);
+            color: var(--accent-red);
+        }
+
+        .badge-loading {
+            background: rgba(59, 130, 246, 0.15);
+            color: var(--accent-blue);
+        }
+
+        /* Loading Spinner */
+        .spinner {
+            width: 14px;
+            height: 14px;
+            border: 2px solid currentColor;
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Action Button in Table */
+        .btn-download {
+            padding: 6px 12px;
+            font-size: 13px;
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--accent-emerald);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-download:hover {
+            background: rgba(16, 185, 129, 0.25);
+        }
+
+        .btn-download:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Toast Notification */
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            padding: 16px 24px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.3s ease;
+            z-index: 1000;
+        }
+
+        .toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        .toast.success {
+            border-color: var(--accent-emerald);
+        }
+
+        .toast.error {
+            border-color: var(--accent-red);
+        }
+
+        /* Help Text */
+        .help-text {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-top: 8px;
+        }
+
+        /* Progress Bar */
+        .progress-container {
+            margin-top: 20px;
+            display: none;
+        }
+
+        .progress-container.show {
+            display: block;
+        }
+
+        .progress-bar {
+            height: 6px;
+            background: var(--bg-input);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: var(--gradient-1);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .progress-text {
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-top: 8px;
+            text-align: center;
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 48px 24px;
+            color: var(--text-muted);
+        }
+
+        .empty-state .icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 32px;
+            color: var(--text-muted);
+            font-size: 13px;
+        }
+
+        /* Responsive */
+        @media (max-width: 640px) {
+            .container {
+                padding: 24px 16px;
+            }
+
+            .header h1 {
+                font-size: 24px;
+            }
+
+            .card {
+                padding: 20px;
+            }
+
+            .btn-group {
+                flex-direction: column;
+            }
+
+            .btn {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-grid"></div>
+    <div class="bg-glow"></div>
+
+    <div class="container">
+        <header class="header">
+            <div class="logo">
+                <div class="logo-icon">📋</div>
+            </div>
+            <h1>특허 연차등록안내서 다운로더</h1>
+            <p>등록번호를 입력하여 연차등록안내서 PDF를 일괄 다운로드하세요</p>
+        </header>
+
+        <div class="card">
+            <div class="card-title">
+                <span class="icon">📝</span>
+                등록번호 입력
+            </div>
+            
+            <div class="input-group">
+                <label class="input-label">등록번호 목록 (한 줄에 하나씩)</label>
+                <textarea id="rgstNumbers" placeholder="10-2312907-00-00
+1023129070000
+10-1234567
+..."></textarea>
+                <p class="help-text">
+                    💡 다양한 형식 지원: <code>10-2312907-00-00</code>, <code>1023129070000</code>, <code>10-2312907</code> (뒤 0000 자동 추가)
+                </p>
+            </div>
+
+            <div class="btn-group">
+                <button class="btn btn-primary" id="btnCheck" onclick="checkAll()">
+                    <span>🔍</span> 조회하기
+                </button>
+                <button class="btn btn-secondary" id="btnDownloadAll" onclick="downloadAll()" disabled>
+                    <span>📥</span> 전체 다운로드 (ZIP)
+                </button>
+                <button class="btn btn-secondary" onclick="clearAll()">
+                    <span>🗑️</span> 초기화
+                </button>
+            </div>
+
+            <div class="progress-container" id="progressContainer">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+                <p class="progress-text" id="progressText">처리 중...</p>
+            </div>
+        </div>
+
+        <div class="card" id="resultsCard" style="display: none;">
+            <div class="card-title">
+                <span class="icon">📊</span>
+                조회 결과
+                <span id="resultCount" style="margin-left: auto; font-size: 14px; color: var(--text-secondary);"></span>
+            </div>
+            
+            <table class="results-table">
+                <thead>
+                    <tr>
+                        <th>등록번호</th>
+                        <th>발명의 명칭</th>
+                        <th>연차</th>
+                        <th>상태</th>
+                        <th>다운로드</th>
+                    </tr>
+                </thead>
+                <tbody id="resultsBody">
+                </tbody>
+            </table>
+        </div>
+
+        <footer class="footer">
+            특허로 연차등록안내서 다운로드 자동화 도구 • Flask + requests
+        </footer>
+    </div>
+
+    <div class="toast" id="toast">
+        <span id="toastIcon"></span>
+        <span id="toastMessage"></span>
+    </div>
+
+    <script>
+        let results = [];
+
+        function showToast(message, type = 'info') {
+            const toast = document.getElementById('toast');
+            const toastIcon = document.getElementById('toastIcon');
+            const toastMessage = document.getElementById('toastMessage');
+            
+            toastMessage.textContent = message;
+            toastIcon.textContent = type === 'success' ? '✅' : type === 'error' ? '❌' : 'ℹ️';
+            
+            toast.className = 'toast show ' + type;
+            
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+
+        function getInputNumbers() {
+            const text = document.getElementById('rgstNumbers').value;
+            return text.split('\n')
+                .map(line => line.trim())
+                .filter(line => line.length > 0);
+        }
+
+        async function checkAll() {
+            const numbers = getInputNumbers();
+            
+            if (numbers.length === 0) {
+                showToast('등록번호를 입력해주세요.', 'error');
+                return;
+            }
+
+            const btnCheck = document.getElementById('btnCheck');
+            const btnDownloadAll = document.getElementById('btnDownloadAll');
+            const progressContainer = document.getElementById('progressContainer');
+            const progressFill = document.getElementById('progressFill');
+            const progressText = document.getElementById('progressText');
+            const resultsCard = document.getElementById('resultsCard');
+            const resultsBody = document.getElementById('resultsBody');
+            const resultCount = document.getElementById('resultCount');
+
+            // Reset
+            btnCheck.disabled = true;
+            btnDownloadAll.disabled = true;
+            progressContainer.classList.add('show');
+            progressFill.style.width = '0%';
+            resultsBody.innerHTML = '';
+            resultsCard.style.display = 'block';
+            results = [];
+
+            for (let i = 0; i < numbers.length; i++) {
+                const rgstNo = numbers[i];
+                const progress = ((i + 1) / numbers.length) * 100;
+                
+                progressFill.style.width = progress + '%';
+                progressText.textContent = `처리 중... (${i + 1}/${numbers.length})`;
+
+                // Add pending row
+                const rowId = 'row-' + i;
+                resultsBody.innerHTML += `
+                    <tr id="${rowId}">
+                        <td class="mono">${rgstNo}</td>
+                        <td>-</td>
+                        <td>-</td>
+                        <td><span class="badge badge-loading"><span class="spinner"></span> 조회중</span></td>
+                        <td>-</td>
+                    </tr>
+                `;
+
+                try {
+                    const response = await fetch('/api/check', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ rgst_no: rgstNo })
+                    });
+
+                    const data = await response.json();
+                    const row = document.getElementById(rowId);
+
+                    if (data.success) {
+                        results.push({
+                            rgst_no: data.rgst_no,
+                            original: rgstNo,
+                            title: data.title,
+                            year: data.year,
+                            success: true
+                        });
+
+                        row.innerHTML = `
+                            <td class="mono">${data.rgst_no}</td>
+                            <td>${data.title || '-'}</td>
+                            <td>${data.year || '-'}년차</td>
+                            <td><span class="badge badge-success">✓ 조회완료</span></td>
+                            <td>
+                                <button class="btn-download" onclick="downloadOne('${data.rgst_no}')">
+                                    📥 다운로드
+                                </button>
+                            </td>
+                        `;
+                    } else {
+                        results.push({
+                            rgst_no: rgstNo,
+                            original: rgstNo,
+                            error: data.error,
+                            success: false
+                        });
+
+                        row.innerHTML = `
+                            <td class="mono">${rgstNo}</td>
+                            <td colspan="2" style="color: var(--accent-red);">${data.error}</td>
+                            <td><span class="badge badge-error">✗ 실패</span></td>
+                            <td>-</td>
+                        `;
+                    }
+                } catch (err) {
+                    results.push({
+                        rgst_no: rgstNo,
+                        original: rgstNo,
+                        error: err.message,
+                        success: false
+                    });
+
+                    const row = document.getElementById(rowId);
+                    row.innerHTML = `
+                        <td class="mono">${rgstNo}</td>
+                        <td colspan="2" style="color: var(--accent-red);">네트워크 오류</td>
+                        <td><span class="badge badge-error">✗ 실패</span></td>
+                        <td>-</td>
+                    `;
+                }
+
+                // Small delay to prevent overwhelming the server
+                await new Promise(resolve => setTimeout(resolve, 300));
+            }
+
+            const successCount = results.filter(r => r.success).length;
+            resultCount.textContent = `성공: ${successCount} / 전체: ${results.length}`;
+
+            btnCheck.disabled = false;
+            btnDownloadAll.disabled = successCount === 0;
+            progressContainer.classList.remove('show');
+
+            showToast(`조회 완료! 성공: ${successCount}건`, successCount > 0 ? 'success' : 'error');
+        }
+
+        async function downloadOne(rgstNo) {
+            showToast('다운로드 중...', 'info');
+
+            try {
+                const response = await fetch('/api/download', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ rgst_no: rgstNo, knx: 0 })
+                });
+
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `연차등록안내서_${rgstNo}.pdf`;
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    window.URL.revokeObjectURL(url);
+                    showToast('다운로드 완료!', 'success');
+                } else {
+                    const data = await response.json();
+                    showToast(data.error || '다운로드 실패', 'error');
+                }
+            } catch (err) {
+                showToast('다운로드 실패: ' + err.message, 'error');
+            }
+        }
+
+        async function downloadAll() {
+            const successResults = results.filter(r => r.success);
+            
+            if (successResults.length === 0) {
+                showToast('다운로드 가능한 항목이 없습니다.', 'error');
+                return;
+            }
+
+            const btnDownloadAll = document.getElementById('btnDownloadAll');
+            btnDownloadAll.disabled = true;
+            btnDownloadAll.innerHTML = '<span class="spinner"></span> 다운로드 중...';
+
+            try {
+                const response = await fetch('/api/download-batch', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        rgst_numbers: successResults.map(r => r.rgst_no)
+                    })
+                });
+
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `연차등록안내서_${new Date().toISOString().slice(0,10)}.zip`;
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    window.URL.revokeObjectURL(url);
+                    showToast('ZIP 파일 다운로드 완료!', 'success');
+                } else {
+                    const data = await response.json();
+                    showToast(data.error || '다운로드 실패', 'error');
+                }
+            } catch (err) {
+                showToast('다운로드 실패: ' + err.message, 'error');
+            }
+
+            btnDownloadAll.disabled = false;
+            btnDownloadAll.innerHTML = '<span>📥</span> 전체 다운로드 (ZIP)';
+        }
+
+        function clearAll() {
+            document.getElementById('rgstNumbers').value = '';
+            document.getElementById('resultsCard').style.display = 'none';
+            document.getElementById('resultsBody').innerHTML = '';
+            document.getElementById('btnDownloadAll').disabled = true;
+            results = [];
+            showToast('초기화되었습니다.', 'info');
+        }
+    </script>
+</body>
+</html>
+

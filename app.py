@@ -211,6 +211,10 @@ def download_pdf():
             pdf_options = {
                 'page-size': 'A4',
                 'encoding': 'UTF-8',
+                'margin-top': '15mm',
+                'margin-bottom': '10mm',
+                'margin-left': '10mm',
+                'margin-right': '10mm',
                 'no-outline': None,
                 'quiet': '',
                 'disable-javascript': None,

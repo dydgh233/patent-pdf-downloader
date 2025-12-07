@@ -731,7 +731,10 @@
                     })
                 });
 
-                if (response.ok) {
+                const contentType = response.headers.get('content-type') || '';
+                
+                if (response.ok && contentType.includes('application/zip')) {
+                    // ZIP 파일 다운로드 성공
                     const blob = await response.blob();
                     const url = window.URL.createObjectURL(blob);
                     const a = document.createElement('a');
@@ -742,9 +745,13 @@
                     a.remove();
                     window.URL.revokeObjectURL(url);
                     showToast('ZIP 파일 다운로드 완료!', 'success');
-                } else {
+                } else if (contentType.includes('application/json')) {
+                    // JSON 에러 응답
                     const data = await response.json();
                     showToast(data.error || '다운로드 실패', 'error');
+                } else {
+                    // 알 수 없는 응답
+                    showToast('다운로드 실패: 서버 응답 오류', 'error');
                 }
             } catch (err) {
                 showToast('다운로드 실패: ' + err.message, 'error');

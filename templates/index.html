@@ -747,11 +747,17 @@
                     showToast('ZIP 파일 다운로드 완료!', 'success');
                 } else if (contentType.includes('application/json')) {
                     // JSON 에러 응답
-                    const data = await response.json();
-                    showToast(data.error || '다운로드 실패', 'error');
+                    try {
+                        const data = await response.json();
+                        showToast(data.error || '다운로드 실패', 'error');
+                    } catch (e) {
+                        showToast(`다운로드 실패 (상태: ${response.status})`, 'error');
+                    }
                 } else {
-                    // 알 수 없는 응답
-                    showToast('다운로드 실패: 서버 응답 오류', 'error');
+                    // 알 수 없는 응답 - 텍스트로 확인
+                    const text = await response.text();
+                    console.error('서버 응답:', response.status, contentType, text.substring(0, 500));
+                    showToast(`서버 오류 (${response.status}): ${text.substring(0, 100)}`, 'error');
                 }
             } catch (err) {
                 showToast('다운로드 실패: ' + err.message, 'error');

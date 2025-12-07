@@ -482,7 +482,7 @@
                     <span>🔍</span> 조회하기
                 </button>
                 <button class="btn btn-secondary" id="btnDownloadAll" onclick="downloadAll()" disabled>
-                    <span>📥</span> 전체 다운로드 (ZIP)
+                    <span>📥</span> 전체 다운로드
                 </button>
                 <button class="btn btn-secondary" onclick="clearAll()">
                     <span>🗑️</span> 초기화
@@ -720,51 +720,50 @@
 
             const btnDownloadAll = document.getElementById('btnDownloadAll');
             btnDownloadAll.disabled = true;
-            btnDownloadAll.innerHTML = '<span class="spinner"></span> 다운로드 중...';
-
-            try {
-                const response = await fetch('/api/download-batch', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        rgst_numbers: successResults.map(r => r.rgst_no)
-                    })
-                });
-
-                const contentType = response.headers.get('content-type') || '';
+            
+            let completed = 0;
+            let failed = 0;
+            
+            for (const item of successResults) {
+                btnDownloadAll.innerHTML = `<span class="spinner"></span> 다운로드 중... (${completed + failed + 1}/${successResults.length})`;
                 
-                if (response.ok && contentType.includes('application/zip')) {
-                    // ZIP 파일 다운로드 성공
-                    const blob = await response.blob();
-                    const url = window.URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = `연차등록안내서_${new Date().toISOString().slice(0,10)}.zip`;
-                    document.body.appendChild(a);
-                    a.click();
-                    a.remove();
-                    window.URL.revokeObjectURL(url);
-                    showToast('ZIP 파일 다운로드 완료!', 'success');
-                } else if (contentType.includes('application/json')) {
-                    // JSON 에러 응답
-                    try {
-                        const data = await response.json();
-                        showToast(data.error || '다운로드 실패', 'error');
-                    } catch (e) {
-                        showToast(`다운로드 실패 (상태: ${response.status})`, 'error');
+                try {
+                    const response = await fetch('/api/download', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ rgst_no: item.rgst_no, knx: 0 })
+                    });
+
+                    if (response.ok) {
+                        const blob = await response.blob();
+                        const url = window.URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `${item.display_no || item.rgst_no}.pdf`;
+                        document.body.appendChild(a);
+                        a.click();
+                        a.remove();
+                        window.URL.revokeObjectURL(url);
+                        completed++;
+                    } else {
+                        failed++;
                     }
-                } else {
-                    // 알 수 없는 응답 - 텍스트로 확인
-                    const text = await response.text();
-                    console.error('서버 응답:', response.status, contentType, text.substring(0, 500));
-                    showToast(`서버 오류 (${response.status}): ${text.substring(0, 100)}`, 'error');
+                } catch (err) {
+                    failed++;
                 }
-            } catch (err) {
-                showToast('다운로드 실패: ' + err.message, 'error');
+                
+                // 다음 다운로드 전 잠시 대기 (서버 부하 방지)
+                await new Promise(resolve => setTimeout(resolve, 500));
             }
 
             btnDownloadAll.disabled = false;
-            btnDownloadAll.innerHTML = '<span>📥</span> 전체 다운로드 (ZIP)';
+            btnDownloadAll.innerHTML = '<span>📥</span> 전체 다운로드';
+            
+            if (failed === 0) {
+                showToast(`${completed}개 파일 다운로드 완료!`, 'success');
+            } else {
+                showToast(`완료: ${completed}개, 실패: ${failed}개`, completed > 0 ? 'success' : 'error');
+            }
         }
 
         function clearAll() {

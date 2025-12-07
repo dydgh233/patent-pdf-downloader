@@ -246,137 +246,143 @@ def download_batch():
     """
     여러 등록번호의 PDF를 ZIP으로 묶어서 다운로드
     """
-    data = request.get_json()
-    rgst_numbers = data.get('rgst_numbers', [])
-    
-    if not rgst_numbers:
-        return jsonify({'success': False, 'error': '등록번호 목록이 비어있습니다.'})
-    
-    # ZIP 파일 생성
-    zip_buffer = io.BytesIO()
-    
-    results = []
-    with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
-        for input_no in rgst_numbers:
-            input_no = str(input_no).strip() if input_no else ''
-            if not input_no:
-                continue
-                
-            try:
-                session = requests.Session()
-                
-                # 출원번호인지 등록번호인지 확인
-                normalized_input = input_no.replace('-', '')
-                
-                if is_application_number(normalized_input):
-                    appl_no = normalize_appl_no(input_no)
-                    rgst_no = get_rgst_no_from_appl_no(session, appl_no)
-                    if not rgst_no:
-                        results.append({'rgst_no': input_no, 'success': False, 'error': '등록정보 없음'})
-                        continue
-                    normalized = rgst_no
-                else:
-                    normalized = normalize_rgst_no(input_no)
-                
-                html_source = get_registration_page(session, normalized)
-                
-                data_list = parse_pdf_data(html_source)
-                additional = parse_additional_params(html_source)
-                
-                if not data_list:
-                    results.append({'rgst_no': input_no, 'success': False, 'error': '데이터 없음'})
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'success': False, 'error': '요청 데이터가 없습니다.'})
+        
+        rgst_numbers = data.get('rgst_numbers', [])
+        
+        if not rgst_numbers:
+            return jsonify({'success': False, 'error': '등록번호 목록이 비어있습니다.'})
+        
+        # ZIP 파일 생성
+        zip_buffer = io.BytesIO()
+        
+        results = []
+        with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+            for input_no in rgst_numbers:
+                input_no = str(input_no).strip() if input_no else ''
+                if not input_no:
                     continue
-                
-                # PDF 데이터 가져오기
-                original_data_string = data_list[0]
-                ls_arr = original_data_string.split('#@')
-                
-                payload = build_payload(ls_arr, additional)
-                
-                # URL 결정
-                rgst_no_value = payload.get('arg4', '')
-                if rgst_no_value.startswith('4'):
-                    url_path = '/smart/jsp/kiponet/ma/infomodifypatent/ReadAnnualRgstFeeRes4.do'
-                else:
-                    url_path = '/smart/jsp/kiponet/ma/infomodifypatent/ReadAnnualRgstFeeRes2.do'
-                
-                full_url = 'https://www.patent.go.kr' + url_path
-                
-                headers = {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                    'Accept': 'application/pdf,*/*',
-                }
-                
-                response = session.post(full_url, data=payload, headers=headers, timeout=60)
-                response.raise_for_status()
-                
-                # HTML -> PDF 변환 후 ZIP에 추가
-                # 파일명: 10-2312907 형식 (format_display_number 사용)
-                display_no = format_display_number(normalized)
-                filename = f"{display_no}.pdf"
-                
-                try:
-                    # HTML 상대 경로 -> 절대 경로 변환
-                    html_content = response.content.decode('utf-8')
-                    html_content = html_content.replace('src="/smart/', 'src="https://www.patent.go.kr/smart/')
-                    html_content = html_content.replace('href="/smart/', 'href="https://www.patent.go.kr/smart/')
                     
-                    pdf_options = {
-                        'page-size': 'A4',
-                        'encoding': 'UTF-8',
-                        'no-outline': None,
-                        'quiet': '',
-                        'disable-javascript': None,
-                        'disable-external-links': None,
-                        'load-error-handling': 'ignore',
-                        'load-media-error-handling': 'ignore',
+                try:
+                    session = requests.Session()
+                    
+                    # 출원번호인지 등록번호인지 확인
+                    normalized_input = input_no.replace('-', '')
+                    
+                    if is_application_number(normalized_input):
+                        appl_no = normalize_appl_no(input_no)
+                        rgst_no = get_rgst_no_from_appl_no(session, appl_no)
+                        if not rgst_no:
+                            results.append({'rgst_no': input_no, 'success': False, 'error': '등록정보 없음'})
+                            continue
+                        normalized = rgst_no
+                    else:
+                        normalized = normalize_rgst_no(input_no)
+                    
+                    html_source = get_registration_page(session, normalized)
+                    
+                    data_list = parse_pdf_data(html_source)
+                    additional = parse_additional_params(html_source)
+                    
+                    if not data_list:
+                        results.append({'rgst_no': input_no, 'success': False, 'error': '데이터 없음'})
+                        continue
+                    
+                    # PDF 데이터 가져오기
+                    original_data_string = data_list[0]
+                    ls_arr = original_data_string.split('#@')
+                    
+                    payload = build_payload(ls_arr, additional)
+                    
+                    # URL 결정
+                    rgst_no_value = payload.get('arg4', '')
+                    if rgst_no_value.startswith('4'):
+                        url_path = '/smart/jsp/kiponet/ma/infomodifypatent/ReadAnnualRgstFeeRes4.do'
+                    else:
+                        url_path = '/smart/jsp/kiponet/ma/infomodifypatent/ReadAnnualRgstFeeRes2.do'
+                    
+                    full_url = 'https://www.patent.go.kr' + url_path
+                    
+                    headers = {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                        'Accept': 'application/pdf,*/*',
                     }
-                    pdf_content = pdfkit.from_string(
-                        html_content,
-                        False,
-                        options=pdf_options,
-                        configuration=pdfkit_config
-                    )
-                    zip_file.writestr(filename, pdf_content)
+                    
+                    response = session.post(full_url, data=payload, headers=headers, timeout=60)
+                    response.raise_for_status()
+                    
+                    # HTML -> PDF 변환 후 ZIP에 추가
+                    display_no = format_display_number(normalized)
+                    filename = f"{display_no}.pdf"
+                    
+                    try:
+                        # HTML 상대 경로 -> 절대 경로 변환
+                        html_content = response.content.decode('utf-8')
+                        html_content = html_content.replace('src="/smart/', 'src="https://www.patent.go.kr/smart/')
+                        html_content = html_content.replace('href="/smart/', 'href="https://www.patent.go.kr/smart/')
+                        
+                        pdf_options = {
+                            'page-size': 'A4',
+                            'encoding': 'UTF-8',
+                            'no-outline': None,
+                            'quiet': '',
+                            'disable-javascript': None,
+                            'disable-external-links': None,
+                            'load-error-handling': 'ignore',
+                            'load-media-error-handling': 'ignore',
+                        }
+                        pdf_content = pdfkit.from_string(
+                            html_content,
+                            False,
+                            options=pdf_options,
+                            configuration=pdfkit_config
+                        )
+                        zip_file.writestr(filename, pdf_content)
+                    except Exception as e:
+                        # PDF 변환 실패 시 HTML로 저장
+                        zip_file.writestr(f"{display_no}.html", response.content)
+                    
+                    results.append({
+                        'rgst_no': input_no,
+                        'success': True,
+                        'title': additional.get('arg45', '')
+                    })
+                    
                 except Exception as e:
-                    # PDF 변환 실패 시 HTML로 저장
-                    zip_file.writestr(f"{display_no}.html", response.content)
-                
-                results.append({
-                    'rgst_no': input_no,
-                    'success': True,
-                    'title': additional.get('arg45', '')
-                })
-                
-            except Exception as e:
-                results.append({'rgst_no': input_no, 'success': False, 'error': str(e)})
-    
-    zip_buffer.seek(0)
-    
-    # 결과 요약
-    success_count = sum(1 for r in results if r.get('success'))
-    
-    if success_count == 0:
-        return jsonify({
-            'success': False,
-            'error': '모든 다운로드가 실패했습니다.',
-            'results': results
-        })
-    
-    # ZIP 파일 반환
-    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    filename = f"연차등록안내서_{timestamp}.zip"
-    encoded_filename = quote(filename)
-    
-    return Response(
-        zip_buffer.getvalue(),
-        mimetype='application/zip',
-        headers={
-            'Content-Disposition': f"attachment; filename*=UTF-8''{encoded_filename}",
-            'X-Download-Results': str(results)
-        }
-    )
+                    results.append({'rgst_no': input_no, 'success': False, 'error': str(e)})
+        
+        zip_buffer.seek(0)
+        
+        # 결과 요약
+        success_count = sum(1 for r in results if r.get('success'))
+        
+        if success_count == 0:
+            return jsonify({
+                'success': False,
+                'error': '모든 다운로드가 실패했습니다.',
+                'results': results
+            })
+        
+        # ZIP 파일 반환
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        filename = f"연차등록안내서_{timestamp}.zip"
+        encoded_filename = quote(filename)
+        
+        return Response(
+            zip_buffer.getvalue(),
+            mimetype='application/zip',
+            headers={
+                'Content-Disposition': f"attachment; filename*=UTF-8''{encoded_filename}",
+                'X-Download-Results': str(results)
+            }
+        )
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': f'서버 오류: {str(e)}'})
 
 
 def build_payload(ls_arr: list, additional: dict) -> dict:

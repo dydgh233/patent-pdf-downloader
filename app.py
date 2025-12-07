@@ -211,17 +211,16 @@ def download_pdf():
             pdf_options = {
                 'page-size': 'A4',
                 'encoding': 'UTF-8',
-                'margin-top': '0mm',
-                'margin-bottom': '0mm',
-                'margin-left': '0mm',
-                'margin-right': '0mm',
+                'margin-top': '15mm',
+                'margin-bottom': '10mm',
+                'margin-left': '15mm',
+                'margin-right': '15mm',
                 'no-outline': None,
                 'quiet': '',
                 'disable-javascript': None,
                 'disable-external-links': None,
                 'load-error-handling': 'ignore',
                 'load-media-error-handling': 'ignore',
-                'print-media-type': None,
             }
             pdf_content = pdfkit.from_string(
                 html_content, 

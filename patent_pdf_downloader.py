@@ -23,6 +23,9 @@ BASE_URL = 'https://www.patent.go.kr'
 # 등록정보 조회 페이지 URL (1단계)
 RGST_INFO_URL = '/smart/jsp/kiponet/ma/mamarkapply/infomodifypatent/ReadChgFrmRgstInfo.do'
 
+# 출원정보 조회 페이지 URL (출원번호 -> 등록번호 변환용)
+APPL_INFO_URL = '/smart/jsp/kiponet/ma/mamarkapply/infomodifypatent/ReadChgFrmApplInfo.do'
+
 # 연차등록안내서 팝업 페이지 URL (2단계)
 RGST_FEE_POPUP_URL = '/smart/jsp/kiponet/mp/mpopenpatinfo/rgstinfo/RetrieveRgstFee.do'
 
@@ -50,6 +53,109 @@ def normalize_rgst_no(rgst_no: str) -> str:
         normalized += '000'
         
     return normalized
+
+
+def normalize_appl_no(appl_no: str) -> str:
+    """
+    출원번호를 정규화합니다.
+    
+    입력 형식:
+        - '10-2020-0012345' → '1020200012345'
+        - '1020200012345' → '1020200012345'
+    """
+    # 하이픈 제거
+    return appl_no.replace('-', '')
+
+
+def is_application_number(number: str) -> bool:
+    """
+    출원번호인지 등록번호인지 구분합니다.
+    
+    출원번호: 13자리 (예: 1020200012345)
+    등록번호: 13자리 (예: 1023129070000)
+    
+    구분 기준: 출원번호는 연도 정보가 포함 (4~7번째 자리가 연도)
+    """
+    normalized = number.replace('-', '')
+    
+    # 출원번호 형식: XX-YYYY-XXXXXXX 또는 XXYYYYXXXXXXX
+    # 4~7번째 자리가 연도 (2000~2099 범위)
+    if len(normalized) >= 13:
+        year_part = normalized[2:6]
+        if year_part.isdigit():
+            year = int(year_part)
+            # 2000년대 연도면 출원번호로 판단
+            if 2000 <= year <= 2099:
+                return True
+    
+    return False
+
+
+def format_display_number(normalized: str) -> str:
+    """
+    정규화된 번호를 표시용 형식으로 변환합니다.
+    
+    등록번호: 1023129070000 → 10-2312907
+    출원번호: 1020200012345 → 10-2020-0012345
+    """
+    if is_application_number(normalized):
+        # 출원번호: XX-YYYY-XXXXXXX
+        return f"{normalized[:2]}-{normalized[2:6]}-{normalized[6:]}"
+    else:
+        # 등록번호: XX-XXXXXXX (뒤 0000 제외)
+        return f"{normalized[:2]}-{normalized[2:9]}"
+
+
+def get_rgst_no_from_appl_no(session: requests.Session, appl_no: str) -> Optional[str]:
+    """
+    출원번호로 등록번호를 조회합니다.
+    
+    Args:
+        session: requests.Session 객체
+        appl_no: 정규화된 출원번호 (예: '1020190065700')
+        
+    Returns:
+        등록번호 (예: '1023061440000') 또는 None (등록되지 않은 경우)
+    """
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7',
+        'Referer': BASE_URL,
+    }
+    
+    url = BASE_URL + APPL_INFO_URL
+    params = {'applNo': appl_no}
+    
+    try:
+        response = session.get(url, params=params, headers=headers, timeout=30)
+        response.raise_for_status()
+        
+        # HTML에서 등록번호 추출
+        # 패턴: 10-2306144-00-00 또는 1023061440000
+        # "등록번호" 근처에서 찾기
+        rgst_pattern = r'등록번호[^0-9]*(\d{2}-\d{7}-\d{2}-\d{2}|\d{13})'
+        match = re.search(rgst_pattern, response.text)
+        
+        if match:
+            rgst_no = match.group(1)
+            return normalize_rgst_no(rgst_no)
+        
+        # 대안: vRgstNo 변수에서 찾기
+        vRgstNo_match = re.search(r"var\s+vRgstNo\s*=\s*'([^']*)'", response.text)
+        if vRgstNo_match and vRgstNo_match.group(1):
+            return normalize_rgst_no(vRgstNo_match.group(1))
+        
+        # 대안: rgstNo 파라미터에서 찾기
+        rgstNo_match = re.search(r"rgstNo['\"]?\s*[:=]\s*['\"]?(\d{13})['\"]?", response.text)
+        if rgstNo_match:
+            return rgstNo_match.group(1)
+            
+        return None
+        
+    except requests.RequestException as e:
+        print(f"출원정보 조회 실패: {e}")
+        return None
 
 
 def get_registration_page(session: requests.Session, rgst_no: str) -> str:

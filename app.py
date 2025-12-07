@@ -44,6 +44,10 @@ WKHTMLTOPDF_PATH = find_wkhtmltopdf()
 pdfkit_config = pdfkit.configuration(wkhtmltopdf=WKHTMLTOPDF_PATH)
 from patent_pdf_downloader import (
     normalize_rgst_no,
+    normalize_appl_no,
+    is_application_number,
+    format_display_number,
+    get_rgst_no_from_appl_no,
     get_registration_page,
     parse_pdf_data,
     parse_additional_params,
@@ -64,17 +68,38 @@ def index():
 @app.route('/api/check', methods=['POST'])
 def check_registration():
     """
-    등록번호 유효성 검사 및 안내서 정보 조회
+    등록번호 또는 출원번호 유효성 검사 및 안내서 정보 조회
     """
     data = request.get_json()
-    rgst_no = data.get('rgst_no', '').strip()
+    input_no = data.get('rgst_no', '').strip()
     
-    if not rgst_no:
-        return jsonify({'success': False, 'error': '등록번호를 입력해주세요.'})
+    if not input_no:
+        return jsonify({'success': False, 'error': '등록번호 또는 출원번호를 입력해주세요.'})
     
     try:
-        normalized = normalize_rgst_no(rgst_no)
         session = requests.Session()
+        
+        # 출원번호인지 등록번호인지 확인
+        normalized_input = input_no.replace('-', '')
+        
+        if is_application_number(normalized_input):
+            # 출원번호인 경우 -> 등록번호 조회
+            appl_no = normalize_appl_no(input_no)
+            rgst_no = get_rgst_no_from_appl_no(session, appl_no)
+            
+            if not rgst_no:
+                return jsonify({
+                    'success': False,
+                    'error': '해당 출원번호의 등록정보를 찾을 수 없습니다. (미등록 또는 존재하지 않는 출원번호)'
+                })
+            
+            normalized = rgst_no
+            input_type = 'application'
+        else:
+            # 등록번호인 경우
+            normalized = normalize_rgst_no(input_no)
+            input_type = 'registration'
+        
         html_source = get_registration_page(session, normalized)
         
         data_list = parse_pdf_data(html_source)
@@ -86,9 +111,14 @@ def check_registration():
                 'error': '연차등록안내서를 찾을 수 없습니다. (로그인 필요 또는 해당 데이터 없음)'
             })
         
+        # 표시용 번호 형식
+        display_no = format_display_number(normalized)
+        
         return jsonify({
             'success': True,
             'rgst_no': normalized,
+            'display_no': display_no,
+            'input_type': input_type,
             'count': len(data_list),
             'title': additional.get('arg45', ''),
             'year': additional.get('arg44', ''),
@@ -106,15 +136,30 @@ def download_pdf():
     단일 PDF 다운로드
     """
     data = request.get_json()
-    rgst_no = data.get('rgst_no', '').strip()
+    input_no = data.get('rgst_no', '').strip()
     knx = data.get('knx', 0)
     
-    if not rgst_no:
-        return jsonify({'success': False, 'error': '등록번호를 입력해주세요.'})
+    if not input_no:
+        return jsonify({'success': False, 'error': '등록번호 또는 출원번호를 입력해주세요.'})
     
     try:
-        normalized = normalize_rgst_no(rgst_no)
         session = requests.Session()
+        
+        # 출원번호인지 등록번호인지 확인
+        normalized_input = input_no.replace('-', '')
+        
+        if is_application_number(normalized_input):
+            # 출원번호인 경우 -> 등록번호 조회
+            appl_no = normalize_appl_no(input_no)
+            rgst_no = get_rgst_no_from_appl_no(session, appl_no)
+            
+            if not rgst_no:
+                return jsonify({'success': False, 'error': '해당 출원번호의 등록정보를 찾을 수 없습니다.'})
+            
+            normalized = rgst_no
+        else:
+            normalized = normalize_rgst_no(input_no)
+        
         html_source = get_registration_page(session, normalized)
         
         data_list = parse_pdf_data(html_source)
@@ -151,9 +196,9 @@ def download_pdf():
         response.raise_for_status()
         
         # HTML을 PDF로 변환
-        # 파일명: 1023129070000 -> 10-2312907
-        rgst_display = f"{normalized[:2]}-{normalized[2:9]}"
-        filename = f"{rgst_display}.pdf"
+        # 파일명: 1023129070000 -> 10-2312907 (format_display_number 사용)
+        display_no = format_display_number(normalized)
+        filename = f"{display_no}.pdf"
         encoded_filename = quote(filename)
         
         try:
@@ -212,21 +257,34 @@ def download_batch():
     
     results = []
     with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
-        for rgst_no in rgst_numbers:
-            rgst_no = rgst_no.strip()
-            if not rgst_no:
+        for input_no in rgst_numbers:
+            input_no = str(input_no).strip() if input_no else ''
+            if not input_no:
                 continue
                 
             try:
-                normalized = normalize_rgst_no(rgst_no)
                 session = requests.Session()
+                
+                # 출원번호인지 등록번호인지 확인
+                normalized_input = input_no.replace('-', '')
+                
+                if is_application_number(normalized_input):
+                    appl_no = normalize_appl_no(input_no)
+                    rgst_no = get_rgst_no_from_appl_no(session, appl_no)
+                    if not rgst_no:
+                        results.append({'rgst_no': input_no, 'success': False, 'error': '등록정보 없음'})
+                        continue
+                    normalized = rgst_no
+                else:
+                    normalized = normalize_rgst_no(input_no)
+                
                 html_source = get_registration_page(session, normalized)
                 
                 data_list = parse_pdf_data(html_source)
                 additional = parse_additional_params(html_source)
                 
                 if not data_list:
-                    results.append({'rgst_no': rgst_no, 'success': False, 'error': '데이터 없음'})
+                    results.append({'rgst_no': input_no, 'success': False, 'error': '데이터 없음'})
                     continue
                 
                 # PDF 데이터 가져오기
@@ -254,9 +312,9 @@ def download_batch():
                 response.raise_for_status()
                 
                 # HTML -> PDF 변환 후 ZIP에 추가
-                # 파일명: 1023129070000 -> 10-2312907
-                rgst_display = f"{normalized[:2]}-{normalized[2:9]}"
-                filename = f"{rgst_display}.pdf"
+                # 파일명: 10-2312907 형식 (format_display_number 사용)
+                display_no = format_display_number(normalized)
+                filename = f"{display_no}.pdf"
                 
                 try:
                     # HTML 상대 경로 -> 절대 경로 변환
@@ -283,16 +341,16 @@ def download_batch():
                     zip_file.writestr(filename, pdf_content)
                 except Exception as e:
                     # PDF 변환 실패 시 HTML로 저장
-                    zip_file.writestr(f"{rgst_display}.html", response.content)
+                    zip_file.writestr(f"{display_no}.html", response.content)
                 
                 results.append({
-                    'rgst_no': rgst_no,
+                    'rgst_no': input_no,
                     'success': True,
                     'title': additional.get('arg45', '')
                 })
                 
             except Exception as e:
-                results.append({'rgst_no': rgst_no, 'success': False, 'error': str(e)})
+                results.append({'rgst_no': input_no, 'success': False, 'error': str(e)})
     
     zip_buffer.seek(0)
     

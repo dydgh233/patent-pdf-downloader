@@ -455,23 +455,25 @@
                 <div class="logo-icon">📋</div>
             </div>
             <h1>특허 연차등록안내서 다운로더</h1>
-            <p>등록번호를 입력하여 연차등록안내서 PDF를 일괄 다운로드하세요</p>
+            <p>등록번호 또는 출원번호를 입력하여 연차등록안내서 PDF를 일괄 다운로드하세요</p>
         </header>
 
         <div class="card">
             <div class="card-title">
                 <span class="icon">📝</span>
-                등록번호 입력
+                등록번호 / 출원번호 입력
             </div>
             
             <div class="input-group">
-                <label class="input-label">등록번호 목록 (한 줄에 하나씩)</label>
+                <label class="input-label">등록번호 또는 출원번호 목록 (한 줄에 하나씩)</label>
                 <textarea id="rgstNumbers" placeholder="10-2312907-00-00
 1023129070000
-10-1234567
+10-2312907
+10-2019-0065700
 ..."></textarea>
                 <p class="help-text">
-                    💡 다양한 형식 지원: <code>10-2312907-00-00</code>, <code>1023129070000</code>, <code>10-2312907</code> (뒤 0000 자동 추가)
+                    💡 등록번호: <code>10-2312907-00-00</code>, <code>1023129070000</code>, <code>10-2312907</code><br>
+                    💡 출원번호: <code>10-2019-0065700</code>, <code>1020190065700</code> (자동으로 등록번호 조회)
                 </p>
             </div>
 
@@ -505,6 +507,7 @@
             <table class="results-table">
                 <thead>
                     <tr>
+                        <th>입력번호</th>
                         <th>등록번호</th>
                         <th>발명의 명칭</th>
                         <th>연차</th>
@@ -592,6 +595,7 @@
                         <td class="mono">${rgstNo}</td>
                         <td>-</td>
                         <td>-</td>
+                        <td>-</td>
                         <td><span class="badge badge-loading"><span class="spinner"></span> 조회중</span></td>
                         <td>-</td>
                     </tr>
@@ -610,6 +614,7 @@
                     if (data.success) {
                         results.push({
                             rgst_no: data.rgst_no,
+                            display_no: data.display_no,
                             original: rgstNo,
                             title: data.title,
                             year: data.year,
@@ -617,12 +622,13 @@
                         });
 
                         row.innerHTML = `
-                            <td class="mono">${data.rgst_no}</td>
+                            <td class="mono">${rgstNo}</td>
+                            <td class="mono">${data.display_no || data.rgst_no}</td>
                             <td>${data.title || '-'}</td>
                             <td>${data.year || '-'}년차</td>
                             <td><span class="badge badge-success">✓ 조회완료</span></td>
                             <td>
-                                <button class="btn-download" onclick="downloadOne('${data.rgst_no}')">
+                                <button class="btn-download" onclick="downloadOne('${data.rgst_no}', '${data.display_no}')">
                                     📥 다운로드
                                 </button>
                             </td>
@@ -637,7 +643,7 @@
 
                         row.innerHTML = `
                             <td class="mono">${rgstNo}</td>
-                            <td colspan="2" style="color: var(--accent-red);">${data.error}</td>
+                            <td colspan="3" style="color: var(--accent-red);">${data.error}</td>
                             <td><span class="badge badge-error">✗ 실패</span></td>
                             <td>-</td>
                         `;
@@ -653,7 +659,7 @@
                     const row = document.getElementById(rowId);
                     row.innerHTML = `
                         <td class="mono">${rgstNo}</td>
-                        <td colspan="2" style="color: var(--accent-red);">네트워크 오류</td>
+                        <td colspan="3" style="color: var(--accent-red);">네트워크 오류</td>
                         <td><span class="badge badge-error">✗ 실패</span></td>
                         <td>-</td>
                     `;
@@ -673,7 +679,7 @@
             showToast(`조회 완료! 성공: ${successCount}건`, successCount > 0 ? 'success' : 'error');
         }
 
-        async function downloadOne(rgstNo) {
+        async function downloadOne(rgstNo, displayNo) {
             showToast('다운로드 중...', 'info');
 
             try {
@@ -688,7 +694,8 @@
                     const url = window.URL.createObjectURL(blob);
                     const a = document.createElement('a');
                     a.href = url;
-                    a.download = `연차등록안내서_${rgstNo}.pdf`;
+                    // 파일명: 10-2312907.pdf 형식
+                    a.download = `${displayNo || rgstNo}.pdf`;
                     document.body.appendChild(a);
                     a.click();
                     a.remove();

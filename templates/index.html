@@ -612,9 +612,15 @@
                     const row = document.getElementById(rowId);
 
                     if (data.success) {
+                        // 출원번호가 있으면 출원번호를, 없으면 등록번호를 파일명으로 사용
+                        const filename = data.display_appl_no || data.display_no || data.rgst_no;
+                        
                         results.push({
                             rgst_no: data.rgst_no,
                             display_no: data.display_no,
+                            appl_no: data.appl_no,
+                            display_appl_no: data.display_appl_no,
+                            filename: filename,
                             original: rgstNo,
                             title: data.title,
                             year: data.year,
@@ -628,7 +634,7 @@
                             <td>${data.year || '-'}년차</td>
                             <td><span class="badge badge-success">✓ 조회완료</span></td>
                             <td>
-                                <button class="btn-download" onclick="downloadOne('${data.rgst_no}', '${data.display_no}')">
+                                <button class="btn-download" onclick="downloadOne('${data.rgst_no}', '${filename}')">
                                     📥 다운로드
                                 </button>
                             </td>
@@ -679,7 +685,7 @@
             showToast(`조회 완료! 성공: ${successCount}건`, successCount > 0 ? 'success' : 'error');
         }
 
-        async function downloadOne(rgstNo, displayNo) {
+        async function downloadOne(rgstNo, filename) {
             showToast('다운로드 중...', 'info');
 
             try {
@@ -694,8 +700,8 @@
                     const url = window.URL.createObjectURL(blob);
                     const a = document.createElement('a');
                     a.href = url;
-                    // 파일명: 10-2312907.pdf 형식
-                    a.download = `${displayNo || rgstNo}.pdf`;
+                    // 파일명: 출원번호 우선 (예: 10-2019-0065700.pdf), 없으면 등록번호
+                    a.download = `${filename || rgstNo}.pdf`;
                     document.body.appendChild(a);
                     a.click();
                     a.remove();
@@ -739,7 +745,9 @@
                         const url = window.URL.createObjectURL(blob);
                         const a = document.createElement('a');
                         a.href = url;
-                        a.download = `${item.display_no || item.rgst_no}.pdf`;
+                        // 파일명: 출원번호 우선, 없으면 등록번호
+                        const filename = item.filename || item.display_appl_no || item.display_no || item.rgst_no;
+                        a.download = `${filename}.pdf`;
                         document.body.appendChild(a);
                         a.click();
                         a.remove();

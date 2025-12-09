@@ -114,10 +114,23 @@ def check_registration():
         # 표시용 번호 형식
         display_no = format_display_number(normalized)
         
+        # 출원번호 추출 (arg47)
+        appl_no = None
+        display_appl_no = None
+        if data_list:
+            original_data_string = data_list[0]
+            ls_arr = original_data_string.split('#@')
+            appl_no_raw = ls_arr[44] if len(ls_arr) > 44 else ''
+            if appl_no_raw and is_application_number(appl_no_raw):
+                appl_no = normalize_appl_no(appl_no_raw)
+                display_appl_no = format_display_number(appl_no)
+        
         return jsonify({
             'success': True,
             'rgst_no': normalized,
             'display_no': display_no,
+            'appl_no': appl_no,
+            'display_appl_no': display_appl_no,
             'input_type': input_type,
             'count': len(data_list),
             'title': additional.get('arg45', ''),
@@ -196,8 +209,15 @@ def download_pdf():
         response.raise_for_status()
         
         # HTML을 PDF로 변환
-        # 파일명: 1023129070000 -> 10-2312907 (format_display_number 사용)
-        display_no = format_display_number(normalized)
+        # 파일명: 출원번호 우선 사용, 없으면 등록번호 사용
+        appl_no = payload.get('arg47', '').strip()
+        if appl_no and is_application_number(appl_no):
+            # 출원번호가 있으면 출원번호로 파일명 생성
+            normalized_appl = normalize_appl_no(appl_no)
+            display_no = format_display_number(normalized_appl)
+        else:
+            # 출원번호가 없으면 등록번호로 파일명 생성
+            display_no = format_display_number(normalized)
         filename = f"{display_no}.pdf"
         encoded_filename = quote(filename)
         
@@ -320,7 +340,15 @@ def download_batch():
                     response.raise_for_status()
                     
                     # HTML -> PDF 변환 후 ZIP에 추가
-                    display_no = format_display_number(normalized)
+                    # 파일명: 출원번호 우선 사용, 없으면 등록번호 사용
+                    appl_no = payload.get('arg47', '').strip()
+                    if appl_no and is_application_number(appl_no):
+                        # 출원번호가 있으면 출원번호로 파일명 생성
+                        normalized_appl = normalize_appl_no(appl_no)
+                        display_no = format_display_number(normalized_appl)
+                    else:
+                        # 출원번호가 없으면 등록번호로 파일명 생성
+                        display_no = format_display_number(normalized)
                     filename = f"{display_no}.pdf"
                     
                     try:

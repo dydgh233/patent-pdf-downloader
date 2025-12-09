@@ -495,9 +495,26 @@ def download_by_rgst_no(
     # 추가 파라미터 파싱 (arg44, arg45, arg46)
     additional_params = parse_additional_params(html_source)
     
-    # 파일명 설정
+    # 파일명 설정: 출원번호 우선 사용, 없으면 등록번호 사용
     if output_filename is None:
-        output_filename = f"연차등록안내서_{normalized_rgst_no}.pdf"
+        # PDF 데이터에서 출원번호 추출 (arg47)
+        if data_list:
+            original_data_string = data_list[knx]
+            ls_arr = original_data_string.split('#@')
+            appl_no = ls_arr[44] if len(ls_arr) > 44 else ''
+            
+            if appl_no and is_application_number(appl_no):
+                # 출원번호가 있으면 출원번호로 파일명 생성
+                normalized_appl = normalize_appl_no(appl_no)
+                display_appl = format_display_number(normalized_appl)
+                output_filename = f"연차등록안내서_{display_appl}.pdf"
+            else:
+                # 출원번호가 없으면 등록번호로 파일명 생성
+                display_rgst = format_display_number(normalized_rgst_no)
+                output_filename = f"연차등록안내서_{display_rgst}.pdf"
+        else:
+            display_rgst = format_display_number(normalized_rgst_no)
+            output_filename = f"연차등록안내서_{display_rgst}.pdf"
     
     # PDF 다운로드
     print(f"[4/4] PDF 다운로드 중...")
